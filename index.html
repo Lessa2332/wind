@@ -2,30 +2,35 @@
 <html lang="uk">
 <head>
     <meta charset="utf-8">
-    <title>Вітер! Дми в мікрофон 🌬️</title>
+    <title>Вітер! Дми або вийди на вулицю 🌬️</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        #canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         #video { position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; transform: scaleX(-1); }
+        #canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         #start { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px 40px; font-size: 28px; background: #4CAF50; color: white; border: none; border-radius: 20px; z-index: 10; cursor: pointer; }
-        #info { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 15px; border-radius: 15px; text-align: center; font-size: 18px; z-index: 10; display: none; }
+        #info { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 15px; border-radius: 15px; text-align: center; font-size: 18px; z-index: 10; display: none; }
+        #realWind { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,100,255,0.8); color: white; padding: 15px; border-radius: 15px; text-align: center; font-size: 20px; z-index: 10; display: none; animation: pulse 1s infinite; }
         #scale { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 80%; height: 30px; background: gray; border-radius: 15px; overflow: hidden; z-index: 10; display: none; }
-        #bar { height: 100%; width: 0%; transition: width 0.3s, background 0.3s; }
+        #bar { height: 100%; width: 0%; transition: width 0.5s ease, background 0.5s ease; }
+        @keyframes pulse { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.1); } 100% { transform: translateX(-50%) scale(1); } }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.min.js"></script>
 </head>
 <body>
     <video id="video" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
-    <button id="start">🌬️ Почати! Дми в мікрофон</button>
-    <div id="info">Дми сильніше — вітер швидший!<br>Зелений — слабкий, Червоний — сильний!</div>
+    <button id="start">🌬️ Почати! Дми або вийди на вулицю</button>
+    <div id="info">Дми в мікрофон або тримай телефон проти вітру!<br>Зелений — слабкий, Червоний — сильний!</div>
+    <div id="realWind">Ого! Це справжній вітер на вулиці! 🌬️💨</div>
     <div id="scale"><div id="bar"></div></div>
 
     <script>
         let video, scene, camera, renderer, particles, windForce = 0;
+        let audioContext, analyser, microphone, lowpassFilter;
         const startBtn = document.getElementById('start');
         const info = document.getElementById('info');
+        const realWind = document.getElementById('realWind');
         const scale = document.getElementById('scale');
         const bar = document.getElementById('bar');
 
@@ -34,9 +39,16 @@
             info.style.display = 'block';
             scale.style.display = 'block';
 
-            // Камера як фон (AR)
+            // Камера (задня для вулиці)
             video = document.getElementById('video');
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' }, 
+                audio: { 
+                    echoCancellation: false,     // Вимикаємо, щоб вітер краще проходив
+                    noiseSuppression: false,     // Не придушуємо шум вітру
+                    autoGainControl: false 
+                } 
+            });
             video.srcObject = stream;
             video.play();
 
@@ -46,90 +58,85 @@
             renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
 
-            // Частинки вітру (сфери + конуси)
-            const particleCount = 500;
+            // Частинки вітру
+            const particleCount = 600;
             const geometry = new THREE.BufferGeometry();
             const positions = new Float32Array(particleCount * 3);
-            const colors = new Float32Array(particleCount * 3);
             const sizes = new Float32Array(particleCount);
-            const types = new Float32Array(particleCount); // 0 = сфера, 1 = конус
 
             for (let i = 0; i < particleCount; i++) {
-                positions[i*3] = (Math.random() - 0.5) * 10;
-                positions[i*3+1] = (Math.random() - 0.5) * 10;
+                positions[i*3] = (Math.random() - 0.5) * 15;
+                positions[i*3+1] = (Math.random() - 0.5) * 15;
                 positions[i*3+2] = (Math.random() - 0.5) * 10;
-                colors[i*3] = 1; colors[i*3+1] = 1; colors[i*3+2] = 1;
-                sizes[i] = Math.random() * 0.2 + 0.1;
-                types[i] = Math.random() > 0.5 ? 0 : 1;
+                sizes[i] = Math.random() * 0.3 + 0.15;
             }
 
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
             geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-            geometry.setAttribute('type', new THREE.BufferAttribute(types, 1));
 
-            const material = new THREE.ShaderMaterial({
-                vertexShader: `
-                    attribute float size;
-                    attribute float type;
-                    varying vec3 vColor;
-                    void main() {
-                        vColor = color;
-                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-                        gl_PointSize = size * (300.0 / -mvPosition.z);
-                        gl_Position = projectionMatrix * mvPosition;
-                    }
-                `,
-                fragmentShader: `
-                    varying vec3 vColor;
-                    uniform float windForce;
-                    void main() {
-                        if (windForce < 0.3) gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0); // зелений
-                        else if (windForce < 0.6) gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0); // жовтий
-                        else gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); // червоний
-                        gl_FragColor.rgb *= vColor;
-                    }
-                `,
-                uniforms: { windForce: { value: 0 } },
+            const material = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.2,
                 transparent: true,
-                vertexColors: true
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
             });
 
             particles = new THREE.Points(geometry, material);
             scene.add(particles);
 
-            // Мікрофон + детекція сили дуття
-            const audioContext = new AudioContext();
-            const analyser = audioContext.createAnalyser();
-            const microphone = audioContext.createMediaStreamSource(stream);
-            microphone.connect(analyser);
-            analyser.fftSize = 512;
+            // Audio
+            audioContext = new AudioContext();
+            microphone = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 1024;  // Більший для кращого частотного аналізу
+
+            // Low-pass фільтр: пропускаємо тільки низькі частоти вітру (<500 Hz)
+            lowpassFilter = audioContext.createBiquadFilter();
+            lowpassFilter.type = 'lowpass';
+            lowpassFilter.frequency.value = 500;  // Ріжемо високі частоти (голос, клацання)
+            lowpassFilter.Q.value = 1;
+
+            microphone.connect(lowpassFilter);
+            lowpassFilter.connect(analyser);
+
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
             function updateWind() {
-                analyser.getByteTimeDomainData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) {
-                    let v = (dataArray[i] - 128) / 128;
-                    sum += v * v;
-                }
-                windForce = Math.sqrt(sum / dataArray.length) * 3; // сила вітру 0-1+
-                windForce = Math.min(windForce, 1);
+                analyser.getByteFrequencyData(dataArray);
 
-                material.uniforms.windForce.value = windForce;
+                // Потужність у низьких частотах (0-500 Hz ≈ перші ~100 бінів при 1024 fft)
+                let lowPower = 0;
+                for (let i = 0; i < 100; i++) {
+                    lowPower += dataArray[i];
+                }
+                lowPower /= 100;
+
+                // Згладжування + чутливість
+                windForce = windForce * 0.8 + (lowPower / 255) * 0.2 * 4;  // Збільшена чутливість
+                windForce = Math.max(0, Math.min(1, windForce));
+
+                // Шкала та колір
                 bar.style.width = (windForce * 100) + '%';
                 if (windForce < 0.3) bar.style.background = 'green';
                 else if (windForce < 0.6) bar.style.background = 'yellow';
                 else bar.style.background = 'red';
 
+                // Показ "справжній вітер" якщо сила середня і стабільна
+                if (windForce > 0.25) {
+                    realWind.style.display = 'block';
+                } else {
+                    realWind.style.display = 'none';
+                }
+
                 // Рух частинок
                 const positions = particles.geometry.attributes.position.array;
                 for (let i = 0; i < particleCount; i++) {
-                    positions[i*3 + 2] += windForce * 0.1; // вперед
-                    if (positions[i*3 + 2] > 5) {
-                        positions[i*3 + 2] = -5;
-                        positions[i*3] = (Math.random() - 0.5) * 10;
-                        positions[i*3 + 1] = (Math.random() - 0.5) * 10;
+                    positions[i*3 + 2] += windForce * 0.15;  // Швидше при сильному вітрі
+                    if (positions[i*3 + 2] > 8) {
+                        positions[i*3 + 2] = -8;
+                        positions[i*3] = (Math.random() - 0.5) * 15;
+                        positions[i*3 + 1] = (Math.random() - 0.5) * 15;
                     }
                 }
                 particles.geometry.attributes.position.needsUpdate = true;
@@ -143,7 +150,7 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            particles.rotation.y += 0.001;
+            particles.rotation.y += 0.001 * (1 + windForce);
             renderer.render(scene, camera);
         }
 
