@@ -175,7 +175,7 @@
             padding: 30px;
             border-radius: 25px;
             width: 90%;
-            max-width: 500px;
+            max-width: 600px;
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
@@ -190,6 +190,7 @@
         .modal-header {
             text-align: center;
             margin-bottom: 25px;
+            position: relative;
         }
 
         .input-group {
@@ -211,6 +212,88 @@
             border: 3px solid var(--primary);
             border-radius: 15px;
             font-family: inherit;
+        }
+
+        /* Wind direction selector */
+        .wind-direction-selector {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .wind-direction-btn {
+            aspect-ratio: 1;
+            background: white;
+            border: 3px solid #e0e0e0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .wind-direction-btn:hover {
+            transform: scale(1.1);
+            background: #f0f8ff;
+        }
+
+        .wind-direction-btn.selected {
+            border-color: var(--primary);
+            background: #e3f2fd;
+        }
+
+        .wind-strength-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .wind-strength-btn {
+            flex: 1;
+            min-width: 100px;
+            padding: 10px;
+            background: white;
+            border: 3px solid #e0e0e0;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .wind-strength-btn:hover {
+            transform: translateY(-3px);
+            background: #f0f8ff;
+        }
+
+        .wind-strength-btn.selected {
+            border-color: var(--accent);
+            background: #ffe0b2;
+        }
+
+        .wind-speed-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 20px;
+            text-align: center;
+            border: 3px solid #81c784;
+            border-radius: 15px;
+            font-family: inherit;
+        }
+
+        .help-link {
+            display: inline-block;
+            margin-top: 5px;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .help-link:hover {
+            text-decoration: underline;
         }
 
         .emoji-picker {
@@ -332,6 +415,16 @@
                 flex-direction: column;
                 gap: 10px;
             }
+            
+            .wind-direction-selector {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 5px;
+            }
+            
+            .wind-strength-btn {
+                min-width: 80px;
+                font-size: 14px;
+            }
         }
 
         /* Achievement badges */
@@ -366,6 +459,22 @@
             padding: 10px;
             background: rgba(255,255,255,0.8);
             border-radius: 10px;
+        }
+
+        /* Wind icon in calendar */
+        .wind-info {
+            font-size: 14px;
+            margin-top: 2px;
+            color: #666;
+        }
+
+        /* Help panel */
+        .help-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 30px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -410,11 +519,20 @@
                     <div>Сонячних днів</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="currentStreak">0</div>
-                    <div>Днів поспіль</div>
+                    <div class="stat-value" id="windyDays">0</div>
+                    <div>Вітряних днів</div>
                 </div>
             </div>
             <div id="achievements" style="margin-top: 20px;"></div>
+        </div>
+
+        <div class="help-panel">
+            <h2>📚 Довідка для малих метеорологів</h2>
+            <p>Не знаєш, яка сьогодні погода? Хочеш перевірити свої спостереження?</p>
+            <p>📌 Використовуй <a href="https://meteopost.com/weather/archive/" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: bold;">архів погоди на Mетеопост</a> для перевірки!</p>
+            <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                На сайті Mетеопост можна подивитися архів погоди за будь-який день. Це допоможе тобі навчитися точніше спостерігати за погодою!
+            </p>
         </div>
 
         <div class="export-buttons">
@@ -447,8 +565,47 @@
                     <div class="emoji-option" data-value="🌧️" title="Дощ">🌧️</div>
                     <div class="emoji-option" data-value="❄️" title="Сніг">❄️</div>
                     <div class="emoji-option" data-value="⛈️" title="Гроза">⛈️</div>
-                    <div class="emoji-option" data-value="🌪️" title="Вітер">🌪️</div>
+                    <div class="emoji-option" data-value="🌪️" title="Сильний вітер">🌪️</div>
                     <div class="emoji-option" data-value="🌈" title="Райдуга">🌈</div>
+                </div>
+            </div>
+
+            <!-- НОВІ ПОЛЯ ДЛЯ ВІТРУ -->
+            <div class="input-group">
+                <label>💨 Вітер:</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <div style="margin-bottom: 10px;">
+                            <label>Напрям вітру:</label>
+                            <a href="https://meteopost.com/weather/archive/" target="_blank" class="help-link">(як визначити?)</a>
+                        </div>
+                        <div class="wind-direction-selector" id="windDirectionPicker">
+                            <button class="wind-direction-btn" data-value="Пн" title="Північний">↑</button>
+                            <button class="wind-direction-btn" data-value="Пд" title="Південний">↓</button>
+                            <button class="wind-direction-btn" data-value="Зх" title="Західний">←</button>
+                            <button class="wind-direction-btn" data-value="Сх" title="Східний">→</button>
+                            <button class="wind-direction-btn" data-value="ПнЗх" title="Північно-західний">↖</button>
+                            <button class="wind-direction-btn" data-value="ПнСх" title="Північно-східний">↗</button>
+                            <button class="wind-direction-btn" data-value="ПдЗх" title="Південно-західний">↙</button>
+                            <button class="wind-direction-btn" data-value="ПдСх" title="Південно-східний">↘</button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label>Сила вітру:</label>
+                        <div class="wind-strength-selector" id="windStrengthPicker">
+                            <button class="wind-strength-btn" data-value="Слабкий">Слабкий</button>
+                            <button class="wind-strength-btn" data-value="Помірний">Помірний</button>
+                            <button class="wind-strength-btn" data-value="Сильний">Сильний</button>
+                            <button class="wind-strength-btn" data-value="Шторм">Шторм</button>
+                        </div>
+                        
+                        <div style="margin-top: 15px;">
+                            <label>Швидкість (м/с):</label>
+                            <input type="number" id="windSpeed" class="wind-speed-input" 
+                                   placeholder="0-20 м/с" min="0" max="50" step="0.1">
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -496,10 +653,24 @@
             "липня", "серпня", "вересня", "жовтня", "листопада", "грудня"
         ];
 
+        // Wind direction names
+        const windDirectionNames = {
+            'Пн': 'Північний',
+            'Пд': 'Південний',
+            'Зх': 'Західний',
+            'Сх': 'Східний',
+            'ПнЗх': 'Північно-західний',
+            'ПнСх': 'Північно-східний',
+            'ПдЗх': 'Південно-західний',
+            'ПдСх': 'Південно-східний'
+        };
+
         // Initialize on load
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize emoji pickers
+            // Initialize all pickers
             initEmojiPickers();
+            initWindDirectionPicker();
+            initWindStrengthPicker();
             
             // Load initial data
             updateCalendar();
@@ -515,7 +686,6 @@
         });
 
         function initEmojiPickers() {
-            // Add click handlers for emoji pickers
             document.querySelectorAll('.emoji-picker').forEach(picker => {
                 picker.addEventListener('click', function(e) {
                     if (e.target.classList.contains('emoji-option')) {
@@ -526,6 +696,30 @@
                         e.target.classList.add('selected');
                     }
                 });
+            });
+        }
+
+        function initWindDirectionPicker() {
+            const picker = document.getElementById('windDirectionPicker');
+            picker.addEventListener('click', function(e) {
+                if (e.target.classList.contains('wind-direction-btn')) {
+                    picker.querySelectorAll('.wind-direction-btn').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    e.target.classList.add('selected');
+                }
+            });
+        }
+
+        function initWindStrengthPicker() {
+            const picker = document.getElementById('windStrengthPicker');
+            picker.addEventListener('click', function(e) {
+                if (e.target.classList.contains('wind-strength-btn')) {
+                    picker.querySelectorAll('.wind-strength-btn').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    e.target.classList.add('selected');
+                }
             });
         }
 
@@ -566,6 +760,25 @@
                     try {
                         const data = JSON.parse(savedData);
                         dayContent += `<div class="weather-icon">${data.weather}</div>`;
+                        
+                        // Add wind info if available
+                        if (data.windDirection) {
+                            let windSymbol = '';
+                            switch(data.windDirection) {
+                                case 'Пн': windSymbol = '↑'; break;
+                                case 'Пд': windSymbol = '↓'; break;
+                                case 'Зх': windSymbol = '←'; break;
+                                case 'Сх': windSymbol = '→'; break;
+                                case 'ПнЗх': windSymbol = '↖'; break;
+                                case 'ПнСх': windSymbol = '↗'; break;
+                                case 'ПдЗх': windSymbol = '↙'; break;
+                                case 'ПдСх': windSymbol = '↘'; break;
+                            }
+                            if (windSymbol) {
+                                dayContent += `<div class="wind-info">${windSymbol} ${data.windSpeed || ''}м/с</div>`;
+                            }
+                        }
+                        
                         dayElement.classList.add('recorded');
                     } catch (e) {
                         console.error('Error parsing saved data:', e);
@@ -619,12 +832,19 @@
             document.querySelectorAll('.emoji-option').forEach(option => {
                 option.classList.remove('selected');
             });
+            document.querySelectorAll('.wind-direction-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            document.querySelectorAll('.wind-strength-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
             
             if (savedData) {
                 try {
                     const data = JSON.parse(savedData);
                     document.getElementById('inputTemp').value = data.temp;
                     document.getElementById('inputNotes').value = data.notes || '';
+                    document.getElementById('windSpeed').value = data.windSpeed || '';
                     
                     // Select saved weather emoji
                     if (data.weather) {
@@ -641,6 +861,23 @@
                             moodOption.classList.add('selected');
                         }
                     }
+                    
+                    // Select saved wind direction
+                    if (data.windDirection) {
+                        const windDirOption = document.querySelector(`#windDirectionPicker .wind-direction-btn[data-value="${data.windDirection}"]`);
+                        if (windDirOption) {
+                            windDirOption.classList.add('selected');
+                        }
+                    }
+                    
+                    // Select saved wind strength
+                    if (data.windStrength) {
+                        const windStrOption = document.querySelector(`#windStrengthPicker .wind-strength-btn[data-value="${data.windStrength}"]`);
+                        if (windStrOption) {
+                            windStrOption.classList.add('selected');
+                        }
+                    }
+                    
                 } catch (e) {
                     console.error('Error parsing saved data:', e);
                     // Clear invalid data
@@ -649,10 +886,13 @@
             } else {
                 document.getElementById('inputTemp').value = '';
                 document.getElementById('inputNotes').value = '';
+                document.getElementById('windSpeed').value = '';
                 
                 // Set default selections
                 document.querySelector('#weatherPicker .emoji-option[data-value="☀️"]').classList.add('selected');
                 document.querySelector('#moodPicker .emoji-option[data-value="😊"]').classList.add('selected');
+                document.querySelector('#windDirectionPicker .wind-direction-btn[data-value="Пн"]').classList.add('selected');
+                document.querySelector('#windStrengthPicker .wind-strength-btn[data-value="Слабкий"]').classList.add('selected');
             }
             
             document.getElementById('modalOverlay').style.display = 'flex';
@@ -688,20 +928,41 @@
             
             const weatherOption = document.querySelector('#weatherPicker .emoji-option.selected');
             const moodOption = document.querySelector('#moodPicker .emoji-option.selected');
+            const windDirOption = document.querySelector('#windDirectionPicker .wind-direction-btn.selected');
+            const windStrOption = document.querySelector('#windStrengthPicker .wind-strength-btn.selected');
             
-            if (!weatherOption || !moodOption) {
-                alert('Будь ласка, вибери погоду та настрій!');
+            if (!weatherOption || !moodOption || !windDirOption || !windStrOption) {
+                alert('Будь ласка, заповни всі поля!');
                 return;
+            }
+            
+            const windSpeedInput = document.getElementById('windSpeed');
+            const windSpeed = windSpeedInput.value.trim();
+            let windSpeedNum = null;
+            
+            if (windSpeed) {
+                windSpeedNum = parseFloat(windSpeed);
+                if (isNaN(windSpeedNum) || windSpeedNum < 0 || windSpeedNum > 50) {
+                    alert('Швидкість вітру повинна бути числом від 0 до 50 м/с!');
+                    windSpeedInput.focus();
+                    return;
+                }
             }
             
             const weather = weatherOption.dataset.value;
             const mood = moodOption.dataset.value;
+            const windDirection = windDirOption.dataset.value;
+            const windStrength = windStrOption.dataset.value;
             const notes = document.getElementById('inputNotes').value.trim();
             
             const data = {
                 temp: tempNum,
                 weather: weather,
                 mood: mood,
+                windDirection: windDirection,
+                windDirectionName: windDirectionNames[windDirection],
+                windStrength: windStrength,
+                windSpeed: windSpeedNum,
                 notes: notes,
                 timestamp: new Date().toISOString(),
                 date: `${selectedDay}.${currentMonth + 1}.${currentYear}`
@@ -718,7 +979,7 @@
                 checkAchievements();
                 
                 // Show success message
-                alert(`✅ Дані за ${selectedDay} ${monthNamesGenitive[currentMonth]} успішно збережено!`);
+                alert(`✅ Дані за ${selectedDay} ${monthNamesGenitive[currentMonth]} успішно збережено!\n\nВітер: ${windDirectionNames[windDirection]}, ${windStrength}, ${windSpeedNum ? windSpeedNum + ' м/с' : 'не вказано'}`);
                 
                 closeModal();
             } catch (e) {
@@ -747,6 +1008,7 @@
             let totalTemp = 0;
             let count = 0;
             let sunnyDays = 0;
+            let windyDays = 0;
             let recordedDays = 0;
             let currentStreak = 0;
             let tempStreak = 0;
@@ -768,6 +1030,12 @@
                         
                         if (data.weather === '☀️') sunnyDays++;
                         
+                        // Check for windy days
+                        if (data.windStrength === 'Сильний' || data.windStrength === 'Шторм' || 
+                            data.weather === '🌪️') {
+                            windyDays++;
+                        }
+                        
                         // Check streak (only for current month)
                         const date = new Date(currentYear, currentMonth, day);
                         if (date <= today) {
@@ -787,7 +1055,7 @@
             // Update display
             document.getElementById('daysRecorded').textContent = recordedDays;
             document.getElementById('sunnyDays').textContent = sunnyDays;
-            document.getElementById('currentStreak').textContent = currentStreak;
+            document.getElementById('windyDays').textContent = windyDays;
             
             if (count > 0) {
                 const avgTemp = totalTemp / count;
@@ -811,6 +1079,8 @@
             let rainyDays = 0;
             let snowyDays = 0;
             let rainbowDays = 0;
+            let windyDays = 0;
+            let stormDays = 0;
             
             weatherKeys.forEach(key => {
                 try {
@@ -818,6 +1088,8 @@
                     if (data.weather === '🌧️') rainyDays++;
                     if (data.weather === '❄️') snowyDays++;
                     if (data.weather === '🌈') rainbowDays++;
+                    if (data.weather === '🌪️') windyDays++;
+                    if (data.windStrength === 'Шторм') stormDays++;
                 } catch (e) {
                     console.error('Error parsing achievement data:', e);
                 }
@@ -826,13 +1098,10 @@
             if (rainyDays >= 3) achievements.push('☔ Дощовий експерт');
             if (snowyDays >= 2) achievements.push('❄️ Зимовий дослідник');
             if (rainbowDays >= 1) achievements.push('🌈 Знайшов скарб');
+            if (windyDays >= 3) achievements.push('💨 Дослідник вітрів');
+            if (stormDays >= 1) achievements.push('⚡ Штурмовик');
             
             // Check for consecutive days
-            let maxConsecutive = 0;
-            let currentConsecutive = 0;
-            const sortedKeys = weatherKeys.sort();
-            
-            // Simple consecutive check (simplified)
             if (weatherKeys.length >= 5) {
                 achievements.push('📅 Старанний спостерігач');
             }
@@ -899,12 +1168,14 @@
                         th { background-color: #f5f5f5; }
                         .header { text-align: center; margin-bottom: 30px; }
                         .stats { background: #f8fdff; padding: 15px; border-radius: 10px; margin: 20px 0; }
+                        .wind-info { font-size: 12px; color: #666; }
                     </style>
                 </head>
                 <body>
                     <div class="header">
                         <h1>📋 Звіт про спостереження за погодою</h1>
                         <h2>${monthNames[currentMonth]} ${currentYear}</h2>
+                        <p>📌 Використано довідковий сайт: <a href="https://meteopost.com/weather/archive/">Mетеопост архів погоди</a></p>
                     </div>
             `;
             
@@ -913,7 +1184,7 @@
             let recordedDays = 0;
             let totalTemp = 0;
             
-            report += `<div class="stats"><h3>Статистика:</h3>`;
+            report += `<div class="stats"><h3>Статистика за місяць:</h3>`;
             
             let tableContent = `
                 <table>
@@ -921,6 +1192,7 @@
                         <th>Дата</th>
                         <th>Температура</th>
                         <th>Погода</th>
+                        <th>Вітер</th>
                         <th>Настрій</th>
                         <th>Спостереження</th>
                     </tr>
@@ -936,11 +1208,23 @@
                         recordedDays++;
                         totalTemp += data.temp;
                         
+                        // Format wind info
+                        let windInfo = '';
+                        if (data.windDirection && data.windStrength) {
+                            windInfo = `${data.windDirectionName || data.windDirection}`;
+                            if (data.windSpeed) {
+                                windInfo += `, ${data.windStrength}, ${data.windSpeed} м/с`;
+                            } else {
+                                windInfo += `, ${data.windStrength}`;
+                            }
+                        }
+                        
                         tableContent += `
                             <tr>
                                 <td>${day}.${currentMonth + 1}.${currentYear}</td>
                                 <td>${data.temp}°C</td>
                                 <td>${data.weather}</td>
+                                <td><span class="wind-info">${windInfo}</span></td>
                                 <td>${data.mood}</td>
                                 <td>${data.notes || ''}</td>
                             </tr>
@@ -999,7 +1283,17 @@
                     try {
                         const data = JSON.parse(savedData);
                         recordedCount++;
-                        summary += `${day}.${currentMonth + 1}: ${data.weather} ${data.temp}°C ${data.mood}\n`;
+                        
+                        // Add wind info to summary
+                        let windInfo = '';
+                        if (data.windDirection && data.windStrength) {
+                            windInfo = `, вітер: ${data.windDirectionName || data.windDirection} ${data.windStrength}`;
+                            if (data.windSpeed) {
+                                windInfo += ` (${data.windSpeed} м/с)`;
+                            }
+                        }
+                        
+                        summary += `${day}.${currentMonth + 1}: ${data.weather} ${data.temp}°C ${data.mood}${windInfo}\n`;
                     } catch (e) {
                         console.error('Error parsing data for share:', e);
                     }
@@ -1011,7 +1305,8 @@
                 return;
             }
             
-            summary += `\nВсього записано: ${recordedCount} днів`;
+            summary += `\nВсього записано: ${recordedCount} днів\n`;
+            summary += `📊 Перевір свої спостереження: https://meteopost.com/weather/archive/`;
             
             if (navigator.share) {
                 navigator.share({
@@ -1052,4 +1347,5 @@
     </script>
 </body>
 </html>
+
 
